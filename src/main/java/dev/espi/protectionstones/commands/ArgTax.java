@@ -25,7 +25,6 @@ import net.md_5.bungee.api.chat.HoverEvent;
 import net.md_5.bungee.api.chat.TextComponent;
 import net.milkbowl.vault.economy.EconomyResponse;
 import org.apache.commons.lang3.math.NumberUtils;
-import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -104,7 +103,7 @@ public class ArgTax implements PSCommandArg {
 
     public boolean taxInfo(String[] args, HashMap<String, String> flags, PSPlayer p) {
         if (args.length == 2) { // /ps tax info
-            Bukkit.getScheduler().runTaskAsynchronously(ProtectionStones.getInstance(), () -> {
+            ProtectionStones.getScheduler().runTaskAsynchronously(() -> {
                 int pageNum = (flags.get("-p") == null || !MiscUtil.isValidInteger(flags.get("-p")) ? 0 : Integer.parseInt(flags.get("-p"))-1);
 
                 List<TextComponent> entries = new ArrayList<>();

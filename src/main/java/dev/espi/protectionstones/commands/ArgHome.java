@@ -23,7 +23,6 @@ import net.md_5.bungee.api.chat.ClickEvent;
 import net.md_5.bungee.api.chat.ComponentBuilder;
 import net.md_5.bungee.api.chat.HoverEvent;
 import net.md_5.bungee.api.chat.TextComponent;
-import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -80,7 +79,7 @@ public class ArgHome implements PSCommandArg {
                 // cache home regions
                 tabCache.put(p.getUniqueId(), regionNames);
 
-                Bukkit.getScheduler().runTaskLater(ProtectionStones.getInstance(), () -> {
+                ProtectionStones.getScheduler().runTaskLater(() -> {
                     tabCache.remove(p.getUniqueId());
                 }, 200); // remove cache after 10 seconds
             }
@@ -128,7 +127,7 @@ public class ArgHome implements PSCommandArg {
         if (args.length != 2 && args.length != 1)
             return PSL.msg(p, PSL.HOME_HELP.msg());
 
-        Bukkit.getScheduler().runTaskAsynchronously(ProtectionStones.getInstance(), () -> {
+        ProtectionStones.getScheduler().runTaskAsynchronously(() -> {
             PSPlayer psp = PSPlayer.fromPlayer(p);
             if (args.length == 1) {
                 // just "/ps home"

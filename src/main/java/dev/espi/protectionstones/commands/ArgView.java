@@ -78,13 +78,13 @@ public class ArgView implements PSCommandArg {
 
         // add player to cooldown
         cooldown.add(p.getUniqueId());
-        Bukkit.getScheduler().runTaskLaterAsynchronously(ProtectionStones.getInstance(), () -> cooldown.remove(p.getUniqueId()), 20 * ProtectionStones.getInstance().getConfigOptions().psViewCooldown);
+        ProtectionStones.getScheduler().runTaskLaterAsynchronously(() -> cooldown.remove(p.getUniqueId()), 20 * ProtectionStones.getInstance().getConfigOptions().psViewCooldown);
 
         int playerY = p.getLocation().getBlockY(), minY = r.getWGRegion().getMinimumPoint().getBlockY(), maxY = r.getWGRegion().getMaximumPoint().getBlockY();
 
         // send particles to client
 
-        Bukkit.getScheduler().runTaskAsynchronously(ProtectionStones.getInstance(), () -> {
+        ProtectionStones.getScheduler().runTaskAsynchronously(() -> {
 
             AtomicInteger modU = new AtomicInteger(0);
 

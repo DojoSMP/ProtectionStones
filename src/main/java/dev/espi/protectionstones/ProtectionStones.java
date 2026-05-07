@@ -18,6 +18,8 @@ package dev.espi.protectionstones;
 import com.electronwill.nightconfig.core.Config;
 import com.electronwill.nightconfig.core.file.CommentedFileConfig;
 import com.electronwill.nightconfig.toml.TomlFormat;
+import com.github.Anon8281.universalScheduler.UniversalScheduler;
+import com.github.Anon8281.universalScheduler.scheduling.schedulers.TaskScheduler;
 import com.sk89q.worldguard.protection.managers.RegionManager;
 import com.sk89q.worldguard.protection.regions.ProtectedRegion;
 import dev.espi.protectionstones.commands.ArgHelp;
@@ -69,6 +71,7 @@ public class ProtectionStones extends JavaPlugin {
 
     private static List<PSCommandArg> commandArgs = new ArrayList<>();
     private static ProtectionStones plugin;
+    private static TaskScheduler scheduler;
 
     private PSEconomy economy;
 
@@ -207,6 +210,10 @@ public class ProtectionStones extends JavaPlugin {
      */
     public static ProtectionStones getInstance() {
         return plugin;
+    }
+
+    public static TaskScheduler getScheduler() {
+        return scheduler;
     }
 
     /**
@@ -555,6 +562,7 @@ public class ProtectionStones extends JavaPlugin {
         Config.setInsertionOrderPreserved(true); // make sure that config upgrades aren't a complete mess
 
         plugin = this;
+        scheduler = UniversalScheduler.getScheduler(this);
         configLocation = new File(this.getDataFolder() + "/config.toml");
         blockDataFolder = new File(this.getDataFolder() + "/blocks");
 
@@ -637,7 +645,7 @@ public class ProtectionStones extends JavaPlugin {
         // uuid cache
         getLogger().info("Building UUID cache... (if slow change async-load-uuid-cache in the config to true)");
         if (configOptions.asyncLoadUUIDCache) { // async load
-            Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            getScheduler().runTaskAsynchronously(() -> {
                 for (OfflinePlayer op : Bukkit.getOfflinePlayers()) {
                     UUIDCache.storeUUIDNamePair(op.getUniqueId(), op.getName());
                 }
@@ -659,6 +667,11 @@ public class ProtectionStones extends JavaPlugin {
             LegacyUpgrade.upgradeRegionsWithNegativeYValues();
 
         getLogger().info(ChatColor.WHITE + "ProtectionStones has successfully started!");
+    }
+
+    @Override
+    public void onDisable() {
+        if (scheduler != null) scheduler.cancelTasks();
     }
 
 }

@@ -48,15 +48,15 @@ class ArgAdminHide {
             mgr = WGUtils.getRegionManagerWithWorld(w);
         }
 
-        Bukkit.getScheduler().runTaskAsynchronously(ProtectionStones.getInstance(), () -> {
+        ProtectionStones.getScheduler().runTaskAsynchronously(() -> {
             // loop through regions that are protection stones and hide or unhide the block
             for (ProtectedRegion r : mgr.getRegions().values()) {
                 if (ProtectionStones.isPSRegion(r)) {
                     PSRegion region = PSRegion.fromWGRegion(w, r);
                     if (args[1].equalsIgnoreCase("hide")) {
-                        Bukkit.getScheduler().runTask(ProtectionStones.getInstance(), region::hide);
+                        ProtectionStones.getScheduler().runTask(region.getProtectBlock().getLocation(), region::hide);
                     } else if (args[1].equalsIgnoreCase("unhide")){
-                        Bukkit.getScheduler().runTask(ProtectionStones.getInstance(), region::unhide);
+                        ProtectionStones.getScheduler().runTask(region.getProtectBlock().getLocation(), region::unhide);
                     }
                 }
             }

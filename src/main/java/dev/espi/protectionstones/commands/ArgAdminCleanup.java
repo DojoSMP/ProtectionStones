@@ -91,7 +91,7 @@ class ArgAdminCleanup {
 
         // async cleanup task
         String finalAlias = alias;
-        Bukkit.getScheduler().runTaskAsynchronously(ProtectionStones.getInstance(), () -> {
+        ProtectionStones.getScheduler().runTaskAsynchronously(() -> {
             int days = (args.size() > 0) ? Integer.parseInt(args.get(0)) : 30; // 30 days is default if days aren't specified
 
             PSL.msg(p, PSL.ADMIN_CLEANUP_HEADER.msg()
@@ -146,8 +146,9 @@ class ArgAdminCleanup {
 
     static private void regionLoop(Iterator<PSRegion> deleteRegionsIterator, CommandSender p, boolean isRemoveOperation) {
         if (deleteRegionsIterator.hasNext()) {
-            Bukkit.getScheduler().runTaskLater(ProtectionStones.getInstance(), () ->
-                    processRegion(deleteRegionsIterator, p, isRemoveOperation), 1);
+            PSRegion region = deleteRegionsIterator.next();
+            ProtectionStones.getScheduler().runTaskLater(region.getProtectBlock().getLocation(), () ->
+                    processRegion(region, deleteRegionsIterator, p, isRemoveOperation), 1);
         } else { // finished region iteration
             PSL.msg(p, PSL.ADMIN_CLEANUP_FOOTER.msg()
                     .replace("%arg%", isRemoveOperation ? "remove" : "preview"));
@@ -168,8 +169,7 @@ class ArgAdminCleanup {
     // Process a region, and then iterate to the next region on the next tick.
     // This is to prevent the server from pausing for the entire duration of the cleanup.
     // (lag from loading chunks to remove protection blocks)
-    static private void processRegion(Iterator<PSRegion> deleteRegionsIterator, CommandSender p, boolean isRemoveOperation) {
-        PSRegion r = deleteRegionsIterator.next();
+    static private void processRegion(PSRegion r, Iterator<PSRegion> deleteRegionsIterator, CommandSender p, boolean isRemoveOperation) {
 
         if (isRemoveOperation) { // delete
 

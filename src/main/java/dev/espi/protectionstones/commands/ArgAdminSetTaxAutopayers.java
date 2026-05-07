@@ -22,7 +22,6 @@ import dev.espi.protectionstones.PSL;
 import dev.espi.protectionstones.PSRegion;
 import dev.espi.protectionstones.ProtectionStones;
 import dev.espi.protectionstones.utils.WGUtils;
-import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.command.CommandSender;
 
@@ -34,7 +33,7 @@ class ArgAdminSetTaxAutopayers {
 
         PSL.msg(s, ChatColor.GRAY + "Scanning through regions, and setting tax autopayers for regions that don't have one...");
 
-        Bukkit.getScheduler().runTaskAsynchronously(ProtectionStones.getInstance(), () -> {
+        ProtectionStones.getScheduler().runTaskAsynchronously(() -> {
             WGUtils.getAllRegionManagers().forEach((w, rgm) -> {
                 for (ProtectedRegion r : rgm.getRegions().values()) {
                     PSRegion psr = PSRegion.fromWGRegion(w, r);
