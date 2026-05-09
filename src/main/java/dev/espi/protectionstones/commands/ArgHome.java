@@ -24,6 +24,7 @@ import net.md_5.bungee.api.chat.ComponentBuilder;
 import net.md_5.bungee.api.chat.HoverEvent;
 import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.ChatColor;
+import org.bukkit.World;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.util.StringUtil;
@@ -127,37 +128,39 @@ public class ArgHome implements PSCommandArg {
         if (args.length != 2 && args.length != 1)
             return PSL.msg(p, PSL.HOME_HELP.msg());
 
+        UUID uuid = p.getUniqueId();
+        World world = p.getWorld();
         ProtectionStones.getScheduler().runTaskAsynchronously(() -> {
-            PSPlayer psp = PSPlayer.fromPlayer(p);
+            PSPlayer psp = PSPlayer.fromUUID(uuid);
             if (args.length == 1) {
                 // just "/ps home"
-                List<PSRegion> regions = psp.getHomes(p.getWorld());
+                List<PSRegion> regions = psp.getHomes(world);
                 if (regions.size() == 1) { // teleport to home if there is only one home
-                    ArgTp.teleportPlayer(p, regions.get(0));
+                    ArgTp.runForPlayer(p, () -> ArgTp.teleportPlayer(p, regions.get(0)));
                 } else { // otherwise, open the GUI
-                    openHomeGUI(psp, regions, (flags.get("-p") == null || !MiscUtil.isValidInteger(flags.get("-p")) ? 0 : Integer.parseInt(flags.get("-p")) - 1));
+                    ArgTp.runForPlayer(p, () -> openHomeGUI(PSPlayer.fromPlayer(p), regions, (flags.get("-p") == null || !MiscUtil.isValidInteger(flags.get("-p")) ? 0 : Integer.parseInt(flags.get("-p")) - 1)));
                 }
             } else {// /ps home [id]
                 // get regions from the query
                 String query = args[1];
-                List<PSRegion> regions = psp.getHomes(p.getWorld())
+                List<PSRegion> regions = psp.getHomes(world)
                         .stream()
                         .filter(region -> region.getId().equals(query)
                                 || (region.getName() != null && region.getName().equals(query)))
                         .collect(Collectors.toList());
 
                 if (regions.isEmpty()) {
-                    PSL.msg(s, PSL.REGION_DOES_NOT_EXIST.msg());
+                    ArgTp.runForPlayer(p, () -> PSL.msg(s, PSL.REGION_DOES_NOT_EXIST.msg()));
                     return;
                 }
 
                 // if there is more than one name in the query
                 if (regions.size() > 1) {
-                    ChatUtil.displayDuplicateRegionAliases(p, regions);
+                    ArgTp.runForPlayer(p, () -> ChatUtil.displayDuplicateRegionAliases(p, regions));
                     return;
                 }
 
-                ArgTp.teleportPlayer(p, regions.get(0));
+                ArgTp.runForPlayer(p, () -> ArgTp.teleportPlayer(p, regions.get(0)));
             }
         });
 

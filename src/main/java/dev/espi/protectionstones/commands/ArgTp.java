@@ -18,10 +18,12 @@ package dev.espi.protectionstones.commands;
 import com.github.Anon8281.universalScheduler.scheduling.tasks.MyScheduledTask;
 import dev.espi.protectionstones.*;
 import dev.espi.protectionstones.utils.ChatUtil;
+import dev.espi.protectionstones.utils.TeleportUtil;
 import dev.espi.protectionstones.utils.UUIDCache;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
@@ -66,19 +68,20 @@ public class ArgTp implements PSCommandArg {
             return PSL.msg(p, PSL.TP_HELP.msg());
 
         if (args.length == 2) { // /ps tp [name/id]
+            World world = p.getWorld();
             ProtectionStones.getScheduler().runTaskAsynchronously(() -> {
                 // get regions from the query
-                List<PSRegion> regions = ProtectionStones.getPSRegions(p.getWorld(), args[1]);
+                List<PSRegion> regions = ProtectionStones.getPSRegions(world, args[1]);
 
                 if (regions.isEmpty()) {
-                    PSL.msg(s, PSL.REGION_DOES_NOT_EXIST.msg());
+                    runForPlayer(p, () -> PSL.msg(s, PSL.REGION_DOES_NOT_EXIST.msg()));
                     return;
                 }
                 if (regions.size() > 1) {
-                    ChatUtil.displayDuplicateRegionAliases(p, regions);
+                    runForPlayer(p, () -> ChatUtil.displayDuplicateRegionAliases(p, regions));
                     return;
                 }
-                teleportPlayer(p, regions.get(0));
+                runForPlayer(p, () -> teleportPlayer(p, regions.get(0)));
             });
         } else { // /ps tp [player] [num]
             // get the region id the player wants to teleport to
@@ -100,22 +103,23 @@ public class ArgTp implements PSCommandArg {
             UUID tpUuid = UUIDCache.getUUIDFromName(tpName);
 
             // run region search asynchronously to avoid blocking server thread
+            World world = p.getWorld();
             ProtectionStones.getScheduler().runTaskAsynchronously(() -> {
-                List<PSRegion> regions = PSPlayer.fromUUID(tpUuid).getPSRegionsCrossWorld(p.getWorld(), false);
+                List<PSRegion> regions = PSPlayer.fromUUID(tpUuid).getPSRegionsCrossWorld(world, false);
 
                 // check if region was found
                 if (regions.isEmpty()) {
-                    PSL.msg(p, PSL.REGION_NOT_FOUND_FOR_PLAYER.msg()
-                            .replace("%player%", tpName));
+                    runForPlayer(p, () -> PSL.msg(p, PSL.REGION_NOT_FOUND_FOR_PLAYER.msg()
+                            .replace("%player%", tpName)));
                     return;
                 } else if (regionNumber > regions.size()) {
-                    PSL.msg(p, PSL.ONLY_HAS_REGIONS.msg()
+                    runForPlayer(p, () -> PSL.msg(p, PSL.ONLY_HAS_REGIONS.msg()
                             .replace("%player%", tpName)
-                            .replace("%num%", "" + regions.size()));
+                            .replace("%num%", "" + regions.size())));
                     return;
                 }
 
-                teleportPlayer(p, regions.get(regionNumber - 1));
+                runForPlayer(p, () -> teleportPlayer(p, regions.get(regionNumber - 1)));
             });
         }
 
@@ -128,6 +132,11 @@ public class ArgTp implements PSCommandArg {
     }
 
     static void teleportPlayer(Player p, PSRegion r) {
+        if (!ProtectionStones.getScheduler().isEntityThread(p)) {
+            runForPlayer(p, () -> teleportPlayer(p, r));
+            return;
+        }
+
         if (r.getTypeOptions() == null) {
             PSL.msg(p, ChatColor.RED + "This region is problematic, and the block type (" + r.getType() + ") is not configured. Please contact an administrator.");
             Bukkit.getLogger().info(ChatColor.RED + "This region is problematic, and the block type (" + r.getType() + ") is not configured.");
@@ -138,14 +147,14 @@ public class ArgTp implements PSCommandArg {
         if (r.getTypeOptions().tpWaitingSeconds == 0 || p.hasPermission("protectionstones.tp.bypasswait")) {
             // no teleport delay
             PSL.msg(p, PSL.TPING.msg());
-            ProtectionStones.getScheduler().runTask(p, () -> p.teleport(r.getHome())); // run on the owning entity thread, not async
+            TeleportUtil.teleportAsync(p, r.getHome());
         } else if (!r.getTypeOptions().noMovingWhenTeleportWaiting) {
             // teleport delay, but doesn't care about moving
             p.sendMessage(PSL.TP_IN_SECONDS.msg().replace("%seconds%", "" + r.getTypeOptions().tpWaitingSeconds));
 
             ProtectionStones.getScheduler().runTaskLater(p, () -> {
                 PSL.msg(p, PSL.TPING.msg());
-                p.teleport(r.getHome());
+                TeleportUtil.teleportAsync(p, r.getHome());
             }, 20 * r.getTypeOptions().tpWaitingSeconds);
 
         } else {// delay and not allowed to move
@@ -159,12 +168,12 @@ public class ArgTp implements PSCommandArg {
             // add teleport wait tasks to queue
             waitCounter.put(uuid, 0);
             taskCounter.put(uuid, ProtectionStones.getScheduler().runTaskTimer(p, () -> {
-                        Player pl = Bukkit.getPlayer(uuid);
                         // cancel if the player is not on the server
-                        if (pl == null) {
+                        if (!p.isOnline()) {
                             removeUUIDTimer(uuid);
                             return;
                         }
+                        Player pl = p;
 
                         if (waitCounter.get(uuid) == null) {
                             removeUUIDTimer(uuid);
@@ -183,7 +192,7 @@ public class ArgTp implements PSCommandArg {
                         } else if (waitCounter.get(uuid) == r.getTypeOptions().tpWaitingSeconds * 4) { // * 4 since this loops 4 times a second
                             // if the timer has passed, teleport and cancel
                             PSL.msg(pl, PSL.TPING.msg());
-                            pl.teleport(r.getHome());
+                            TeleportUtil.teleportAsync(pl, r.getHome());
                             removeUUIDTimer(uuid);
                         }
                     }, 5, 5) // loop 4 times a second
@@ -199,5 +208,11 @@ public class ArgTp implements PSCommandArg {
         if (taskCounter.get(uuid) != null) taskCounter.get(uuid).cancel();
         waitCounter.remove(uuid);
         taskCounter.remove(uuid);
+    }
+
+    static void runForPlayer(Player p, Runnable runnable) {
+        ProtectionStones.getScheduler().runTask(p, () -> {
+            if (p.isOnline()) runnable.run();
+        });
     }
 }
